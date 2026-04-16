@@ -8,13 +8,18 @@ load_dotenv()
 WRITINGS_DIR = os.getenv("WRITINGS_DIR", ".") + "/"
 def grep(pattern, filename):
     path = WRITINGS_DIR + filename
-    with open(path) as f:
-        matches = []
-        for i, line in enumerate(f, 1):
-            if re.search(pattern, line):
-                matches.append(f"{i}: {line.rstrip()}")
-    return "\n".join(matches) if matches else "No matches found."
+    if os.path.exists(path) == True:
 
+        with open(path) as f:
+            matches = []
+            for i, line in enumerate(f, 1):
+                if re.search(pattern, line):
+                    matches.append(f"{i}: {line.rstrip()}")
+        return "\n".join(matches) if matches else "No matches found."
+    else:
+        error = "ERROR! Grep failed. Filename '" + path + "' does not exists."
+        print(error)
+        return error
 
 def cat(filename):
     path = WRITINGS_DIR + filename
@@ -106,8 +111,10 @@ while True:
 
     messages.append({"role": "user", "content": user_input})
     response = ollama.chat(model=model, messages=messages, tools=tools)
-
-    if response.message.tool_calls:
+    max_rounds = 10
+    rounds = 0
+    while response.message.tool_calls and rounds < max_rounds:
+        rounds += 1
         messages.append(response.message)
         print(messages)
         for tool_call in response.message.tool_calls:
@@ -126,7 +133,8 @@ while True:
                     + " "
                     + str(tool_call.function.arguments["filename"])
                 )
-
+        if rounds >= 10:
+            print("ROUND >= 10. TIMEOUT!")
         messages.append({"role": "tool", "content": str(result)})
 
         response = ollama.chat(model=model, messages=messages, tools=tools)
